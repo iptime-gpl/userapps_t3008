@@ -1,0 +1,23 @@
+#!/bin/sh
+
+hostname rlx-linux
+
+echo "mounting proc ..."
+mount -t proc proc /proc
+mount -t ramfs ramfs /var
+
+echo "mking dirs ..."
+mkdir /var/tmp
+mkdir /var/log
+mkdir /var/run
+mkdir /var/lock
+cat /etc/motd
+
+
+echo 0 > /proc/rtk_vlan_support
+# please change 'ap' to 'mp' and following a ip for mp usage , when you want to run system in mp mode , for example
+#mp init command
+#sysinit.sh mp 192.168.1.5
+#ap init command
+sysinit.sh ap
+

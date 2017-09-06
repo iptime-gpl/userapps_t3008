@@ -1,0 +1,1 @@
+clones/t3008/clone_info.mk

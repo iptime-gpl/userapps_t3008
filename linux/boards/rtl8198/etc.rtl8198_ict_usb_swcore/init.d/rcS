@@ -1,0 +1,21 @@
+#!/bin/sh
+
+hostname rlx-linux
+
+echo "mounting proc ..."
+mount -t proc proc /proc
+mount -t ramfs ramfs /var
+
+echo "mking dirs ..."
+mkdir /var/tmp
+mkdir /var/log
+mkdir /var/run
+mkdir /var/lock
+cat /etc/motd
+
+# init eth0 & eth1
+mac0="00e04c"`cat /dev/urandom | tr -dc "a-f0-9" | fold -w 6 | head -n 1`
+mac1="00e04c"`cat /dev/urandom | tr -dc "a-f0-9" | fold -w 6 | head -n 1`
+ifconfig eth0 hw ether "$mac0" 192.168.1.254
+ifconfig eth1 hw ether "$mac1" 192.168.2.254
+ifconfig lo up
