@@ -40,4 +40,8 @@ var WIRELESSCONF_EXTENDSETUP_DYN_BLANKED = 'Please enter a Dynamic channel';
 var WIRELESSCONF_EXTENDSETUP_DYN_INVALID = 'Dynamic channel hour must 1~100';
 
 var WIRELESSCONF_DISCONN_ALERT = 'Currently connected setup page by wireless network.\nif continue setup, will be disconnected wireless network.\nwould you continue setup?';
+var WIRELESSCONF_BASICSETUP_DFS_WARNING = 'Because 52 - 144 Channel is DFS channel, 60 seconds is needed till wifi activation.\nIf Radar signal is detected, router will change channel automatically.';   
+
+var WIRELESSCONF_DFS_SWITCHING = 'Switching..';
+var WIRELESSCONF_DFS_SILENCE = 'Activating';
 </script>

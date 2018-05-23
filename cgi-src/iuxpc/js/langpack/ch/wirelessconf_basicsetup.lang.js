@@ -38,4 +38,8 @@ var WIRELESSCONF_EXTENDSETUP_DYN_BLANKED = '请输入动态的信道';
 var WIRELESSCONF_EXTENDSETUP_DYN_INVALID = '动态信道时间必须为 1~100';
 
 var WIRELESSCONF_DISCONN_ALERT = '当前连接的设置页面的无线网络.\n如果继续安装, 将断开无线网络.\n您继续设置吗?';
+var WIRELESSCONF_BASICSETUP_DFS_WARNING = 'Because 52 - 144 Channel is DFS channel, 60 seconds is needed till wifi activation.\nIf Radar signal is detected, router will change channel automatically.';
+
+var WIRELESSCONF_DFS_SWITCHING = 'Switching..';
+var WIRELESSCONF_DFS_SILENCE = 'Activating';
 </script>

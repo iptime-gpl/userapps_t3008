@@ -1,3 +1,5 @@
+void set_ux_text_lib_string();
+char *get_ux_text_lib_string(int idx);
 #define LIB_NETCONF_WIRELESS_CHINA get_ux_text_lib_string(0)
 #define LIB_NETCONF_WIRELESS_EU get_ux_text_lib_string(1)
 #define LIB_NETCONF_WIRELESS_JAPAN get_ux_text_lib_string(2)

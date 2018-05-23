@@ -38,4 +38,8 @@ var WIRELESSCONF_EXTENDSETUP_DYN_BLANKED = '請輸入動態頻道';
 var WIRELESSCONF_EXTENDSETUP_DYN_INVALID = 'D動態頻道週期為1~100';
 
 var WIRELESSCONF_DISCONN_ALERT = '目前使用無線網路連接設定頁面。\n如繼續設定將中斷無線網路。\n確定要繼續嗎？';
+var WIRELESSCONF_BASICSETUP_DFS_WARNING = 'Because 52 - 144 Channel is DFS channel, 60 seconds is needed till wifi activation.\nIf Radar signal is detected, router will change channel automatically.';
+
+var WIRELESSCONF_DFS_SWITCHING = 'Switching..';
+var WIRELESSCONF_DFS_SILENCE = 'Activating';
 </script>

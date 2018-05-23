@@ -1,4 +1,4 @@
-cmd_drivers/net/rtl819x/rtl865x_proc_debug.o := rsdk-linux-gcc -Wp,-MD,drivers/net/rtl819x/.rtl865x_proc_debug.o.d  -nostdinc -isystem /home/rtlac/RTL3.4/rtl819x_3.4.6.5/toolchain/rsdk-1.5.10-5281-EB-2.6.30-0.9.30-m32ub-130429/bin/../lib/gcc/mips-linux-uclibc/4.4.7/include -Iinclude  -I/home/rtlac/RTL3.4/rtl819x_3.4.6.5/linux-2.6.30/arch/rlx/include -include include/linux/autoconf.h -D__KERNEL__ -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -fno-delete-null-pointer-checks -Os -ffunction-sections -mno-check-zero-division -mabi=32 -G 0 -mno-abicalls -fno-pic -pipe -msoft-float -ffreestanding -EB -UMIPSEB -U_MIPSEB -U__MIPSEB -U__MIPSEB__ -UMIPSEL -U_MIPSEL -U__MIPSEL -U__MIPSEL__ -DMIPSEB -D_MIPSEB -D__MIPSEB -D__MIPSEB__ -Iinclude/asm-rlx -Iarch/rlx/bsp/ -I/home/rtlac/RTL3.4/rtl819x_3.4.6.5/linux-2.6.30/arch/rlx/include/asm/mach-generic -D"VMLINUX_LOAD_ADDRESS=0x80000000" -Wframe-larger-than=1024 -fno-stack-protector -fomit-frame-pointer -Wdeclaration-after-statement -Wno-pointer-sign -fno-strict-overflow -fno-dwarf2-cfi-asm -DCONFIG_RTL865X_MODULE_INTERNAL -DRTL865X_OVER_KERNEL -DRTL865X_OVER_LINUX -D__KERNEL__ -Wno-implicit -Werror -I/home/rtlac/RTL3.4/rtl819x_3.4.6.5/linux-2.6.30/include -I/home/rtlac/RTL3.4/rtl819x_3.4.6.5/target/bsp -I/home/rtlac/RTL3.4/rtl819x_3.4.6.5/linux-2.6.30/drivers/net/rtl819x/ -I/home/rtlac/RTL3.4/rtl819x_3.4.6.5/target -D__KERNEL__ -DEXPORT_SYMTAB -I/home/rtlac/RTL3.4/rtl819x_3.4.6.5/linux-2.6.30/drivers/net/rtl819x//RTL8370R-VB_API   -D"KBUILD_STR(s)=\#s" -D"KBUILD_BASENAME=KBUILD_STR(rtl865x_proc_debug)"  -D"KBUILD_MODNAME=KBUILD_STR(rtl865x_proc_debug)"  -c -o drivers/net/rtl819x/rtl865x_proc_debug.o drivers/net/rtl819x/rtl865x_proc_debug.c
+cmd_drivers/net/rtl819x/rtl865x_proc_debug.o := rsdk-linux-gcc -Wp,-MD,drivers/net/rtl819x/.rtl865x_proc_debug.o.d  -nostdinc -isystem /home/rtlac/RTL3.4/rtl819x_3.4.6.5/toolchain/rsdk-1.5.10-5281-EB-2.6.30-0.9.30-m32ub-130429/bin/../lib/gcc/mips-linux-uclibc/4.4.7/include -Iinclude  -I/home/rtlac/RTL3.4/rtl819x_3.4.6.5/linux-2.6.30/arch/rlx/include -include include/linux/autoconf.h -D__KERNEL__ -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -fno-delete-null-pointer-checks -Os -ffunction-sections -mno-check-zero-division -mabi=32 -G 0 -mno-abicalls -fno-pic -pipe -msoft-float -ffreestanding -EB -UMIPSEB -U_MIPSEB -U__MIPSEB -U__MIPSEB__ -UMIPSEL -U_MIPSEL -U__MIPSEL -U__MIPSEL__ -DMIPSEB -D_MIPSEB -D__MIPSEB -D__MIPSEB__ -Iinclude/asm-rlx -Iarch/rlx/bsp/ -I/home/rtlac/RTL3.4/rtl819x_3.4.6.5/linux-2.6.30/arch/rlx/include/asm/mach-generic -D"VMLINUX_LOAD_ADDRESS=0x80000000" -Wframe-larger-than=1024 -fno-stack-protector -fomit-frame-pointer -Wdeclaration-after-statement -Wno-pointer-sign -fno-strict-overflow -fno-dwarf2-cfi-asm -DCONFIG_RTL865X_MODULE_INTERNAL -DRTL865X_OVER_KERNEL -DRTL865X_OVER_LINUX -D__KERNEL__ -Wno-implicit -Werror -I/home/rtlac/RTL3.4/rtl819x_3.4.6.5/linux-2.6.30/include -I/home/rtlac/RTL3.4/rtl819x_3.4.6.5/target/bsp -I/home/rtlac/RTL3.4/rtl819x_3.4.6.5/linux-2.6.30/drivers/net/rtl819x/ -I/home/rtlac/RTL3.4/rtl819x_3.4.6.5/target -D__KERNEL__ -DEXPORT_SYMTAB   -D"KBUILD_STR(s)=\#s" -D"KBUILD_BASENAME=KBUILD_STR(rtl865x_proc_debug)"  -D"KBUILD_MODNAME=KBUILD_STR(rtl865x_proc_debug)"  -c -o drivers/net/rtl819x/rtl865x_proc_debug.o drivers/net/rtl819x/rtl865x_proc_debug.c
 
 deps_drivers/net/rtl819x/rtl865x_proc_debug.o := \
   drivers/net/rtl819x/rtl865x_proc_debug.c \
@@ -425,7 +425,6 @@ deps_drivers/net/rtl819x/rtl865x_proc_debug.o := \
   drivers/net/rtl819x/AsicDriver/rtl865x_asicL3.h \
     $(wildcard include/config/rtl/8198c.h) \
     $(wildcard include/config/rtl/hardware/multicast/cam.h) \
-  drivers/net/rtl819x/AsicDriver/rtl865x_asicL4.h \
   drivers/net/rtl819x/AsicDriver/rtl865xc_asicregs.h \
     $(wildcard include/config/rtl8196b.h) \
     $(wildcard include/config/rtl865xc/bcut.h) \
@@ -445,26 +444,6 @@ deps_drivers/net/rtl819x/rtl865x_proc_debug.o := \
     $(wildcard include/config/rtl/qos/patch.h) \
     $(wildcard include/config/rtl/fast/bridge.h) \
     $(wildcard include/config/rtl/reinit/switch/core.h) \
-  /home/rtlac/RTL3.4/rtl819x_3.4.6.5/linux-2.6.30/drivers/net/rtl819x//RTL8370R-VB_API/rtk_api.h \
-    $(wildcard include/config/ledoff.h) \
-    $(wildcard include/config/dupcol.h) \
-    $(wildcard include/config/link/act.h) \
-    $(wildcard include/config/spd1000.h) \
-    $(wildcard include/config/spd100.h) \
-    $(wildcard include/config/spd10.h) \
-    $(wildcard include/config/spd1000act.h) \
-    $(wildcard include/config/spd100act.h) \
-    $(wildcard include/config/spd10act.h) \
-    $(wildcard include/config/spd10010act.h) \
-    $(wildcard include/config/loopdetect.h) \
-    $(wildcard include/config/eee.h) \
-    $(wildcard include/config/linkrx.h) \
-    $(wildcard include/config/linktx.h) \
-    $(wildcard include/config/master.h) \
-    $(wildcard include/config/act.h) \
-    $(wildcard include/config/end.h) \
-  /home/rtlac/RTL3.4/rtl819x_3.4.6.5/linux-2.6.30/drivers/net/rtl819x//RTL8370R-VB_API/rtk_types.h \
-  /home/rtlac/RTL3.4/rtl819x_3.4.6.5/linux-2.6.30/drivers/net/rtl819x//RTL8370R-VB_API/rtk_error.h \
 
 drivers/net/rtl819x/rtl865x_proc_debug.o: $(deps_drivers/net/rtl819x/rtl865x_proc_debug.o)
 

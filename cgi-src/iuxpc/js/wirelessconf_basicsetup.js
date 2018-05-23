@@ -5,6 +5,28 @@ var regExp_spchar = /[\{\}\[\]\/?;:|*~`!^+<>@$%\\\=\'\"]/g;
 var regExp_ip = /^(25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[1-9])\.(25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[1-9]|0)\.(25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[1-9]|0)\.(25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[0-9])$/;
 var regExp_hex = /[0-9a-fA-F]{64}/
 
+function wl_tag_to_full_ghz_text(wl_tag)
+{
+	if(!wl_tag)	return '';
+
+	if(wl_tag == '2g')	return '2.4 GHz';
+	else if(wl_tag == '5g')	return '5 GHz';
+	else if(wl_tag == '5g2')	return '5 GHz';
+	else if(wl_tag == 'band')	return '2.4/5 GHz';
+
+	return '';
+}
+
+function is_band_steering_mode(idoc, wl_str, mode)
+{
+	if(!idoc || !wl_str)		return false;
+	if(!idoc.band_steering_info)	return false;
+
+	if(mode == 'tag' && wl_str == idoc.band_steering_info.tag)		return true;
+	else if(mode == 'mode' && wl_str == idoc.band_steering_info.value)	return true;
+	else 			return false;
+}
+
 function DisableObj_V2(obj)
 {
 	if(!obj)	return;
@@ -41,6 +63,43 @@ function ClickEventPropagater(e)
 	if(!e) var e = window.event;
 	e.cancelBubble = true;
 	if(e.stopPropagation) e.stopPropagation();
+}
+
+function find_support_wlmode(idoc, wl_tag)
+{
+	if(!idoc || !wl_tag)	return false;
+
+	for(var i = 0; i < idoc.support_wl_tags.length; i++){
+		if(parseInt(wl_tag) == parseInt(idoc.support_wl_tags[i].value))	return true;
+	}
+	return false;
+}
+
+function bandsteering_update_channel()
+{
+	var ifr = parent.document.basicsetup_iframe || parent.document.getElementsByName('basicsetup_iframe')[0];
+	if(!ifr)	return;
+	var idoc = ifr.document || ifr.contentWindow.document;
+	if(!idoc)	return;
+	var F = idoc.basicsetup_fm;
+	if(!F)	return;
+
+	var ifr2 = parent.document.hiddenwlsetup_iframe || parent.document.getElementsByName('hiddenwlsetup_iframe')[0];
+	if(!ifr2)	return;
+	var idoc2 = ifr2.document || ifr2.contentWindow.document;
+	if(!idoc2)	return;
+	var F2 = idoc2.hiddenwlsetup_fm;
+	if(!F2)	return;
+
+	for(i = 0; i < parent.support_wl_tags.length; i++){
+		if(!F['channel_'+i])	continue;
+		update_channel_options(F2['country_'+i].value
+			, F2['realchanwidth_'+i].value
+			, F2['ctlchannel_'+i].value + '.' + F2['cntchannel_'+i].value
+			, F2['autochannel_'+i].value == '1'?true:false, parent.support_wl_tags[i].tag
+			, F['channel_'+i]);
+
+	}
 }
 
 function toggle_title(target, img)
@@ -85,11 +144,26 @@ function get_mbssidnames_for_ie5(doc)
 	
 	for(var i = 1 ; i < 4; i++)
 	{
-		for(var j = 1; j < 4; j++){
-			tmp = doc.getElementById('BSSID_' + i + '_' + j + '_0');
-			if(tmp){	objs[idx] = tmp;	objs.length+=1;	idx+=1;	}
-			tmp = doc.getElementById('BSSID_' + i + '_' + j + '_1');
-			if(tmp){	objs[idx] = tmp;	objs.length+=1;	idx+=1;	}
+		if(parent.support_wl_tags && parent.support_wl_tags.length){
+			for(var k = 0; k < parent.support_wl_tags.length; k++){
+				for(var j = 1; j < 4; j++){
+					tmp = doc.getElementById('BSSID_' + i + '_' + j + '_' + parent.support_wl_tags[k].value);
+					if(tmp){	objs[idx] = tmp;	objs.length+=1;	idx+=1;	}
+				}
+			}
+		}else{
+			for(var j = 1; j < 4; j++){
+				tmp = doc.getElementById('BSSID_' + i + '_' + j + '_0');
+				if(tmp){	objs[idx] = tmp;	objs.length+=1;	idx+=1;	}
+				tmp = doc.getElementById('BSSID_' + i + '_' + j + '_1');
+				if(tmp){	objs[idx] = tmp;	objs.length+=1;	idx+=1;	}
+			}
+		}
+		if(parent.band_steering_info){
+			for(var j = 1; j < 4; j++){
+				tmp = doc.getElementById('BSSID_' + i + '_' + j + '_' + parent.band_steering_info.value);
+				if(tmp){	objs[idx] = tmp;	objs.length+=1;	idx+=1;	}
+			}
 		}
 	}
 	return objs;
@@ -388,27 +462,32 @@ function SelectSearchResult(val)
 		F.ocolor.value = '';
 }
 
+function all_wps_button_disable(idoc)
+{
+	if(!idoc)			return;
+
+	for(var i = 0; i < idoc.support_wl_tags.length; i++){
+		DisableObj_V2(document.getElementById('wpsconn'+idoc.support_wl_tags[i].tag));
+	}
+	if(idoc.band_steering_info)
+		DisableObj_V2(document.getElementById('wpsconn'+idoc.band_steering_info.tag));
+}
+
 function refresh_wps_view(wl_mode, activated)
 {
-	var ifr = parent.document.wpssetup_iframe || parent.document.getElementsByName('wpssetup_iframe')[0];
+	var ifr = parent.document.wladdon_iframe || parent.document.getElementsByName('wladdon_iframe')[0];
 	if(!ifr)	return;
 	var idoc = ifr.document || ifr.contentWindow.document;
 	if(!idoc)	return;
 	var pf = idoc.wps_fm || idoc.getElementsByName('wps_fm')[0];
 
-	if(wl_mode == '2g'){
-		if(activated)	EnableObj_V2(idoc.getElementById('wpsconn2g'));
-		else		DisableObj_V2(idoc.getElementById('wpsconn2g'));
-		idoc.getElementById('wpsconn2g').innerHTML = '2.4 GHz ' + WIRELESSCONF_BASICSETUP_WPSCONNBTN;
-		idoc.getElementById('wpsstatus').innerHTML = '';
-		pf.act2gbtn.value = '';
-	}else{
-		if(activated)	EnableObj_V2(idoc.getElementById('wpsconn5g'));
-		else		DisableObj_V2(idoc.getElementById('wpsconn5g'));
-		idoc.getElementById('wpsconn5g').innerHTML = '5 GHz ' + WIRELESSCONF_BASICSETUP_WPSCONNBTN;
-		idoc.getElementById('wpsstatus').innerHTML = '';
-		pf.act5gbtn.value = '';
-	}
+	if(activated)	EnableObj_V2(idoc.getElementById('wpsconn'+wl_mode));
+	else		DisableObj_V2(idoc.getElementById('wpsconn'+wl_mode));
+
+	if(!idoc.getElementById('wpsconn'+wl_mode))	return;
+	idoc.getElementById('wpsconn'+wl_mode).innerHTML = wl_tag_to_full_ghz_text(wl_mode) + ' ' + WIRELESSCONF_BASICSETUP_WPSCONNBTN;
+	idoc.getElementById('wpsstatus').innerHTML = '';
+	pf['act'+wl_mode+'btn'].value = '';
 }
 
 function onclick_wps_button(wl_mode)
@@ -422,18 +501,9 @@ function onclick_wps_button(wl_mode)
 	var pf = document.wps_fm || document.getElementsByName('wps_fm')[0];
 
 	F.wlmode.value = wl_mode;
-	if(wl_mode == '2g'){
-		F.action.value = pf.act2gbtn.value;
-		DisableObj_V2(document.getElementById('wpsconn2g'));
-		DisableObj_V2(document.getElementById('wpsconn5g'));
-		pf.act2gbtn.value = '';
-	}
-	else{
-		F.action.value = pf.act5gbtn.value;
-		DisableObj_V2(document.getElementById('wpsconn2g'));
-		DisableObj_V2(document.getElementById('wpsconn5g'));
-		pf.act5gbtn.value = '';
-	}
+	F.action.value = pf['act'+wl_mode+'btn'].value;
+	all_wps_button_disable(parent);
+	pf['act'+wl_mode+'btn'].value = '';
 
 	pf.submitted.value = '1';
 	F.submit();
@@ -565,7 +635,7 @@ function check_values_error()
 			}
 		}
 	}
-	if(F1.sidx.value == '0'){
+	if(F1.sidx.value == '0' && find_support_wlmode(this, F1.wlmode.value)){
 	if(F3.txpower){
 		val = F3.txpower.value;
 		if(val == ''){
@@ -630,12 +700,42 @@ function check_values_error()
 
 	if(F1.rwarning){
 		if(F1.sidx.value == '0'){
-			var ctlchan = parseInt(F2.channel.value.split('.')[0]);
-			if(ctlchan > 35 && ctlchan < 49){
-				if(!confirm(WIRELESSCONF_BASICSETUP_REGULATION_WARNING))	return true;
+			if(is_band_steering_mode(this, F1.wlmode.value, 'mode')){
+				for(var i = 0; i < this.support_wl_tags.length; i++){
+					if(!F2['channel_'+i])	continue;
+					var ctlchan = parseInt(F2['channel_'+i].value.split('.')[0]);
+					if(ctlchan > 35 && ctlchan < 49){
+						if(!confirm(WIRELESSCONF_BASICSETUP_REGULATION_WARNING))	return true;
+					}
+				}
+			}else{
+				var ctlchan = parseInt(F2.channel.value.split('.')[0]);
+				if(ctlchan > 35 && ctlchan < 49){
+					if(!confirm(WIRELESSCONF_BASICSETUP_REGULATION_WARNING))	return true;
+				}
 			}
 		}
 	}
+
+	if(F1.dfswarning){
+		if(F1.sidx.value == '0'){
+			if(is_band_steering_mode(this, F1.wlmode.value, 'mode')){
+				for(var i = 0; i < this.support_wl_tags.length; i++){
+					if(!F2['channel_'+i])	continue;
+					var ctlchan = parseInt(F2['channel_'+i].value.split('.')[0]);
+					if(ctlchan >= 52 && ctlchan <= 144){
+						if(!confirm(WIRELESSCONF_BASICSETUP_DFS_WARNING))	return true;
+					}
+				}
+			}else{
+				var ctlchan = parseInt(F2.channel.value.split('.')[0]);
+				if(ctlchan >= 52 && ctlchan <= 144){
+					if(!confirm(WIRELESSCONF_BASICSETUP_DFS_WARNING))	return true;
+				}
+			}
+		}
+	}
+
 
 	if(check_current_connmode(document)){
 		if(!confirm(WIRELESSCONF_DISCONN_ALERT))	return true;
@@ -703,7 +803,7 @@ function submit_all_data()
 		if(F2.txrate)F1.txrate.value = F2.txrate.value;
 		if(F2.rxrate)F1.rxrate.value = F2.rxrate.value;
 	}
-	if(F1.sidx.value == '0'){
+	if(F1.sidx.value == '0' && find_support_wlmode(this, F1.wlmode.value)){
 	if(F1.txpower)		F1.txpower.value = F3.txpower.value;
 	if(F1.beacon)		F1.beacon.value = F3.beacon.value;
 	if(F1.rts)		F1.rts.value = F3.rts.value;
@@ -728,6 +828,20 @@ function submit_all_data()
 	if(F1.mimoant && F3.mimoant)		F1.mimoant.value = F3.mimoant.value;
 	}
 
+	if(F1.sidx.value == '0' && is_band_steering_mode(this, F1.wlmode.value, 'mode'))
+	{
+		for(var i = 0; i < this.support_wl_tags.length; i++){
+			if(!F2['channel_'+i])	continue;
+			if(F2['channel_'+i].value == '0'){
+				F1['autochannel_'+i].value = '1';
+			}else{
+				F1['autochannel_'+i].value = '0';
+				F1['ctlchannel_'+i].value = F2['channel_'+i].value.split('.')[0];
+				F1['cntchannel_'+i].value = F2['channel_'+i].value.split('.')[1];
+			}
+		}
+	}
+
 	F1.action.value = 'allsubmit';
 	F1.submit();
 	MaskIt(document, 'apply_mask');
@@ -741,7 +855,7 @@ function get_freq_desc(ctl_ch, cnt_ch, wl_mode)
 	if(!F2)	return;
 
 	var desc = ctl_ch + ' [ '; 
-	var ghz = (wl_mode == '5g')?5:2;
+	var ghz = (wl_mode == '2g')?2:5;
 
 	if(ghz == 5)	desc += '5.'+5*ctl_ch;
 	else{
@@ -754,7 +868,7 @@ function get_freq_desc(ctl_ch, cnt_ch, wl_mode)
 	return desc;
 }
 
-function update_channel_options(country, bw, val, isauto, wl_mode)
+function update_channel_options(country, bw, val, isauto, wl_mode, fm)
 {
 	var ifr = parent.document.basicsetup_iframe || parent.document.getElementsByName('basicsetup_iframe')[0];
 	if(!ifr)	return;
@@ -775,45 +889,94 @@ function update_channel_options(country, bw, val, isauto, wl_mode)
 		bw = F2.channelwidth.value;
 	}
 
-	for(var i = 0; i < F.channel.options.length; i ++)	F.channel.options[i] = null;
-	F.channel.options.length = 0;
-
-	if(wl_mode == '2g'){
-		var ctl_arr = parent.control_channel_arr2g[country + '_' + bw];
-		var cnt_arr = parent.central_channel_arr2g[country + '_' + bw];
+	if(fm){
+		for(var i = 0; i < fm.options.length; i ++)	fm.options[i] = null;
+		fm.options.length = 0;
 	}else{
-		var ctl_arr = parent.control_channel_arr5g[country + '_' + bw];
-		var cnt_arr = parent.central_channel_arr5g[country + '_' + bw];
+		for(var i = 0; i < F.channel.options.length; i ++)	F.channel.options[i] = null;
+		F.channel.options.length = 0;
 	}
+
+	var ctl_arr = parent['control_channel_arr'+wl_mode][country + '_' + bw];
+	var cnt_arr = parent['central_channel_arr'+wl_mode][country + '_' + bw];
 	var ctl_ch = parseInt(val.split('.')[0]);
 	var cnt_ch = parseInt(val.split('.')[1]);
 	var optext = WIRELESSCONF_BASICSETUP_AUTOCHANNEL_STRING + '(' + get_freq_desc(ctl_ch, cnt_ch, wl_mode) + ')';
 	
-	F.channel.options[0] = new Option(optext,'0');
+	if(fm){
+		fm.options[0] = new Option(optext,'0');
+	}else{
+		F.channel.options[0] = new Option(optext,'0');
+	}
 	var idx = 1;
 	var is_correct = false;
 	for(var i in ctl_arr){
 		optext = get_freq_desc(ctl_arr[i], cnt_arr[i], wl_mode);
-		F.channel.options[idx++] = new Option(optext, ctl_arr[i]+'.'+cnt_arr[i]);
+		if(fm){
+			fm.options[idx++] = new Option(optext, ctl_arr[i]+'.'+cnt_arr[i]);
+		}else{
+			F.channel.options[idx++] = new Option(optext, ctl_arr[i]+'.'+cnt_arr[i]);
+		}
 		if((ctl_ch == ctl_arr[i]) && (cnt_ch == cnt_arr[i]))	is_correct = true;
 	}
 	if(!is_correct){
 		for(var i in ctl_arr){
-			if(ctl_ch == ctl_arr[i])	val = (ctl_arr[i] + '.' + cnt_arr[i]);
+			if(ctl_ch == ctl_arr[i]){	val = (ctl_arr[i] + '.' + cnt_arr[i]);	is_correct = true;}
 		}
+		if(!is_correct){val = 0;}
 	}
-	if(isauto)	F.channel.value = '0';
-	else		F.channel.value = val;
+	if(fm){
+		if(isauto)	fm.value = '0';
+		else		fm.value = val;
+	}else{
+		if(isauto)	F.channel.value = '0';
+		else		F.channel.value = val;
+	}
 }
 
-function update_basicsetup_view(doc, sidx)
+function update_multiple_line_view(doc, name, disp, max)
 {
+	if(!doc)	return;
+
+	for(var i = 0; i < max; i ++){
+		if(doc.getElementById(name+i))doc.getElementById(name+i).style.display = disp;
+		else	 return;
+	}
+}
+
+function update_basicsetup_view(doc, sidx, is_band_steering, band_steering_on)
+{
+	if(doc.getElementById('SSID_LINE'))doc.getElementById('SSID_LINE').style.display = '';
+	if(doc.getElementById('AUTH_LINE'))doc.getElementById('AUTH_LINE').style.display = '';
+	if(doc.getElementById('PASSWORD_LINE'))doc.getElementById('PASSWORD_LINE').style.display = '';
+
+	update_multiple_line_view(doc, 'BANDSTEERING_EXPLAIN', 'none', 99);
+	update_multiple_line_view(doc, 'BANDSTEERING_DUMMY_LINE', 'none', 99);
+
 	if(sidx == '0'){
-		if(doc.getElementById('CHANNEL_LINE'))doc.getElementById('CHANNEL_LINE').style.display = '';
-		if(doc.getElementById('POLICY_LINE'))doc.getElementById('POLICY_LINE').style.display = 'none';
+		if(is_band_steering){
+			if(doc.getElementById('CHANNEL_LINE'))doc.getElementById('CHANNEL_LINE').style.display = 'none';
+			if(doc.getElementById('POLICY_LINE'))doc.getElementById('POLICY_LINE').style.display = 'none';
+			update_multiple_line_view(doc, 'BANDSTEERING_LINE', '', 99);
+		}else{
+			if(doc.getElementById('CHANNEL_LINE'))doc.getElementById('CHANNEL_LINE').style.display = '';
+			if(doc.getElementById('POLICY_LINE'))doc.getElementById('POLICY_LINE').style.display = 'none';
+			update_multiple_line_view(doc, 'BANDSTEERING_LINE', 'none', 99);
+
+			if(band_steering_on){
+				if(doc.getElementById('SSID_LINE'))doc.getElementById('SSID_LINE').style.display = 'none';
+				if(doc.getElementById('AUTH_LINE'))doc.getElementById('AUTH_LINE').style.display = 'none';
+				if(doc.getElementById('PASSWORD_LINE'))doc.getElementById('PASSWORD_LINE').style.display = 'none';
+				if(doc.getElementById('CHANNEL_LINE'))doc.getElementById('CHANNEL_LINE').style.display = 'none';
+
+				update_multiple_line_view(doc, 'BANDSTEERING_EXPLAIN', '', 99);
+				update_multiple_line_view(doc, 'BANDSTEERING_DUMMY_LINE', '', 99);
+			}
+		}
 	}else{
 		if(doc.getElementById('CHANNEL_LINE'))doc.getElementById('CHANNEL_LINE').style.display = 'none';
 		if(doc.getElementById('POLICY_LINE'))doc.getElementById('POLICY_LINE').style.display = '';
+		update_multiple_line_view(doc, 'BANDSTEERING_LINE', 'none', 99);
 	}
 	var lines = doc.getElementsByName('BASICSETUP_LINE');
 	if(!lines || lines.length == 0)	lines = doc.getElementsByTagName('tr');
@@ -823,6 +986,10 @@ function update_basicsetup_view(doc, sidx)
 		if(lines[i].id == 'basicsetuptitle')	continue;
 		if(lines[i].style.display == 'none')	continue;
 		lines[i].style.backgroundColor = (j % 2 == 0)?'#FFFFFF':'#F7F7F7';	j++;
+	}
+
+	if(j > 0){
+		init_resize_only('basicsetup_iframe', ((j * 24) + 24));
 	}
 }
 
@@ -836,6 +1003,10 @@ function AllEnableBasicsetup(F)
 	EnableObj_V2(F.radiusserver1); 	EnableObj_V2(F.radiusserver2);		EnableObj_V2(F.radiusserver3); 	EnableObj_V2(F.radiusserver4);
 	EnableObj_V2(F.radiusport); 	EnableObj_V2(F.manual);			EnableObj_V2(F.radiussecret); 	EnableObj_V2(F.radiussecret_text);
 	EnableObj_V2(F.mbsspolicy); 	EnableObj_V2(F.qosenable);		EnableObj_V2(F.rxrate); 	EnableObj_V2(F.txrate);
+	for(var i = 0; i < 4; i ++){ /* For band steering */
+		if(!F['channel_'+i])	break;
+		EnableObj_V2(F['channel_'+i]);
+	}
 }
 
 function AllDisableBasicsetup(F)
@@ -848,6 +1019,10 @@ function AllDisableBasicsetup(F)
 	DisableObj_V2(F.radiusserver1); DisableObj_V2(F.radiusserver2);		DisableObj_V2(F.radiusserver3); DisableObj_V2(F.radiusserver4);
 	DisableObj_V2(F.radiusport); 	DisableObj_V2(F.manual);		DisableObj_V2(F.radiussecret); 	DisableObj_V2(F.radiussecret_text);
 	DisableObj_V2(F.mbsspolicy); 	DisableObj_V2(F.qosenable);		DisableObj_V2(F.rxrate); 	DisableObj_V2(F.txrate);
+	for(var i = 0; i < 4; i ++){ /* For band steering */
+		if(!F['channel_'+i])	break;
+		DisableObj_V2(F['channel_'+i]);
+	}
 }
 
 function update_basicsetup_lines(wl_mode)
@@ -866,15 +1041,26 @@ function update_basicsetup_lines(wl_mode)
 	var F2 = idoc2.hiddenwlsetup_fm;
 	if(!F2)	return;
 
+	var bndstrg_mode = is_band_steering_mode(parent, F2.wlmode.value, 'mode');
+
 	if(F2.sidx.value == '0'){
-		update_channel_options(F2.country.value, F2.realchanwidth.value, F2.ctlchannel.value + '.' 
-			+ F2.cntchannel.value, F2.autochannel.value == '1'?true:false, wl_mode);
-		idoc.getElementById('basicsetup_title_p').innerHTML = ((wl_mode=='2g')?"2.4 GHz ":"5 GHz ") + WIRELESSCONF_BASICSETUP_DEFNET;
+		if(bndstrg_mode){
+			bandsteering_update_channel();
+		}else{
+			update_channel_options(F2.country.value, F2.realchanwidth.value
+				, F2.ctlchannel.value + '.' + F2.cntchannel.value, F2.autochannel.value == '1'?true:false, wl_mode);
+		}
+		idoc.getElementById('basicsetup_title_p').innerHTML = wl_tag_to_full_ghz_text(wl_mode) + ' ' + WIRELESSCONF_BASICSETUP_DEFNET;
 	}else{
-		idoc.getElementById('basicsetup_title_p').innerHTML = ((wl_mode=='2g')?"2.4 GHz ":"5 GHz ") + WIRELESSCONF_BASICSETUP_GSTNET + ' ' + F2.uiidx.value;
+		idoc.getElementById('basicsetup_title_p').innerHTML = wl_tag_to_full_ghz_text(wl_mode) + ' ' + WIRELESSCONF_BASICSETUP_GSTNET + ' ' + F2.uiidx.value;
 	}
 
-	update_basicsetup_view(idoc, F2.sidx.value);
+	update_basicsetup_view(idoc, F2.sidx.value, bndstrg_mode
+		, ((F2.band_steering)?(F2.band_steering.value == '1'):null));
+
+	if(idoc.getElementById('BANDSTEERING_EXPLAIN_GHZ')){
+		idoc.getElementById('BANDSTEERING_EXPLAIN_GHZ').innerHTML = wl_tag_to_full_ghz_text(wl_mode);
+	}
 
 	if(F2.run.value == '1')
 		AllEnableBasicsetup(F);
@@ -922,6 +1108,22 @@ function update_basicsetup_lines(wl_mode)
 	if(F2.run.value == '0')
 		AllDisableBasicsetup(F);
 
+	if(F2.sidx.value == '0'){
+		if(bndstrg_mode){
+			for(i = 0; i < parent.support_wl_tags.length; i++){
+				if(!F['channel_'+i])	continue;
+				if(F2['chandisable_'+i] && F2['chandisable_'+i].value == '1'){
+					DisableObj_V2(F['channel_'+i]);
+				}
+			}
+		}else{
+			if(F2.chandisable && F2.chandisable.value == '1'){
+				DisableObj_V2(F.channel);
+				DisableObj_V2(F.search_channel_bt);
+			}
+		}
+	}
+
 	UnMaskIt(parent.document, 'apply_mask');
 }
 
@@ -931,13 +1133,9 @@ function update_ext_options(doc, F, wl_mode)
 		for(var i = 0; i < F.wirelessmode.options.length; i++)	F.wirelessmode.options[i] = null;
 		F.wirelessmode.options.length = 0;
 
-		if(wl_mode == '2g' && doc.options2g){
-			for(var i = 0; i < doc.options2g.length; i++){
-				F.wirelessmode.options[i] = new Option(doc.options2g[i].text, doc.options2g[i].value);
-			}
-		}else if(doc.options5g){
-			for(var i = 0; i < doc.options5g.length; i++){
-				F.wirelessmode.options[i] = new Option(doc.options5g[i].text, doc.options5g[i].value);
+		if(doc['options'+wl_mode]){
+			for(var i = 0; i < doc['options'+wl_mode].length; i++){
+				F.wirelessmode.options[i] = new Option(doc['options'+wl_mode][i].text, doc['options'+wl_mode][i].value);
 			}
 		}
 	}
@@ -945,13 +1143,9 @@ function update_ext_options(doc, F, wl_mode)
 		for(var i = 0; i < F.channelwidth.options.length; i++)	F.channelwidth.options[i] = null;
 		F.channelwidth.options.length = 0;
 
-		if(wl_mode == '2g' && doc.chanwidth2g){
-			for(var i = 0; i < doc.chanwidth2g.length; i++){
-				F.channelwidth.options[i] = new Option(doc.chanwidth2g[i].text, doc.chanwidth2g[i].value);
-			}
-		}else if(doc.chanwidth5g){
-			for(var i = 0; i < doc.chanwidth5g.length; i++){
-				F.channelwidth.options[i] = new Option(doc.chanwidth5g[i].text, doc.chanwidth5g[i].value);
+		if(doc['chanwidth'+wl_mode]){
+			for(var i = 0; i < doc['chanwidth'+wl_mode].length; i++){
+				F.channelwidth.options[i] = new Option(doc['chanwidth'+wl_mode][i].text, doc['chanwidth'+wl_mode][i].value);
 			}
 		}
 	}
@@ -959,13 +1153,9 @@ function update_ext_options(doc, F, wl_mode)
 		for(var i = 0; i < F.txbfmumode.options.length; i++)	F.txbfmumode.options[i] = null;
 		F.txbfmumode.options.length = 0;
 
-		if(wl_mode == '2g' && doc.mumimo2g){
-			for(var i = 0; i < doc.mumimo2g.length; i++){
-				F.txbfmumode.options[i] = new Option(doc.mumimo2g[i].text, doc.mumimo2g[i].value);
-			}
-		}else if(doc.mumimo5g){
-			for(var i = 0; i < doc.mumimo5g.length; i++){
-				F.txbfmumode.options[i] = new Option(doc.mumimo5g[i].text, doc.mumimo5g[i].value);
+		if(doc['mumimo'+wl_mode]){
+			for(var i = 0; i < doc['mumimo'+wl_mode].length; i++){
+				F.txbfmumode.options[i] = new Option(doc['mumimo'+wl_mode][i].text, doc['mumimo'+wl_mode][i].value);
 			}
 		}
 	}
@@ -973,13 +1163,9 @@ function update_ext_options(doc, F, wl_mode)
 		for(var i = 0; i < F.muflag.options.length; i++)	F.muflag.options[i] = null;
 		F.muflag.options.length = 0;
 
-		if(wl_mode == '2g' && doc.mumimo2g){
-			for(var i = 0; i < doc.mumimo2g.length; i++){
-				F.muflag.options[i] = new Option(doc.mumimo2g[i].text, doc.mumimo2g[i].value);
-			}
-		}else if(doc.mumimo5g){
-			for(var i = 0; i < doc.mumimo5g.length; i++){
-				F.muflag.options[i] = new Option(doc.mumimo5g[i].text, doc.mumimo5g[i].value);
+		if(doc['mumimo'+wl_mode]){
+			for(var i = 0; i < doc['mumimo'+wl_mode].length; i++){
+				F.muflag.options[i] = new Option(doc['mumimo'+wl_mode][i].text, doc['mumimo'+wl_mode][i].value);
 			}
 		}
 	}
@@ -987,13 +1173,9 @@ function update_ext_options(doc, F, wl_mode)
 		for(var i = 0; i < F.mimoant.options.length; i++)	F.mimoant.options[i] = null;
 		F.mimoant.options.length = 0;
 
-		if(wl_mode == '2g' && doc.mimoant2g){
-			for(var i = 0; i < doc.mimoant2g.length; i++){
-				F.mimoant.options[i] = new Option(doc.mimoant2g[i].text, doc.mimoant2g[i].value);
-			}
-		}else if(doc.mimoant5g){
-			for(var i = 0; i < doc.mimoant5g.length; i++){
-				F.mimoant.options[i] = new Option(doc.mimoant5g[i].text, doc.mimoant5g[i].value);
+		if(doc['mimoant'+wl_mode]){
+			for(var i = 0; i < doc['mimoant'+wl_mode].length; i++){
+				F.mimoant.options[i] = new Option(doc['mimoant'+wl_mode][i].text, doc['mimoant'+wl_mode][i].value);
 			}
 		}
 	}
@@ -1018,7 +1200,7 @@ function update_extendsetup_lines(channelupdate)
 	var wl_mode = F2.wlmodetxt.value;
 
 	var titlep = idoc.getElementById('EXTTITLE');
-	if(titlep)	titlep.innerHTML = ((wl_mode=='2g')?"2.4 GHz ":"5 GHz ") + parent.document.exttitle;
+	if(titlep)	titlep.innerHTML = wl_tag_to_full_ghz_text(wl_mode) + ' ' + parent.document.exttitle;
 
 	if(F2.mimoant){
 		ShowObj_V2(idoc.getElementById('MIMOANT_TITLE'));	ShowObj_V2(F.mimoant);
@@ -1039,7 +1221,7 @@ function update_extendsetup_lines(channelupdate)
 	
 	F.wpsmode.value = F2.wpsmode.value;
 	change_onoff_val(idoc, idoc.getElementById('wpsmode_id'), true);
-	F.wmm.value = F2.wmm.value;
+	if(F2.wmm)	F.wmm.value = F2.wmm.value;
 	change_onoff_val(idoc, idoc.getElementById('wmm_id'), true);
 	if(F2.wpsnoti){
 		F.wpsnoti.value = F2.wpsnoti.value;
@@ -1087,8 +1269,12 @@ function update_extendsetup_lines(channelupdate)
 	}
 
 	if(channelupdate){
-		update_channel_options(F2.country.value, F2.realchanwidth.value, F2.ctlchannel.value + '.' 
-			+ F2.cntchannel.value, F2.autochannel.value == '1'?true:false, wl_mode);
+		if(is_band_steering_mode(parent, wl_mode, 'tag')){
+			bandsteering_update_channel();
+		}else{
+			update_channel_options(F2.country.value, F2.realchanwidth.value, F2.ctlchannel.value + '.' 
+				+ F2.cntchannel.value, F2.autochannel.value == '1'?true:false, wl_mode);
+		}
 	}
 	var titlestat = idoc.getElementById('timg').src.indexOf('closed');
 	var trs = idoc.getElementsByName('tableunit');
@@ -1128,6 +1314,20 @@ function update_multibssid_lines()
 	UnMaskIt(parent.document, 'apply_mask');
 }
 
+function update_extsetup_viewing(frm)
+{
+	if(!frm)	return;
+	
+	if(frm.sidx.value == '0'){
+		if(is_band_steering_mode(parent, frm.wlmode.value, 'mode'))
+			HideObj_V2(parent.document.getElementById('extline'));
+		else
+			ShowObj_V2(parent.document.getElementById('extline'));
+	}else{
+		HideObj_V2(parent.document.getElementById('extline'));
+	}
+}
+
 function Clicked_Multibssid(frm, obj)
 {
 	var F = document.multibssid_fm;
@@ -1158,14 +1358,9 @@ function Clicked_Multibssid(frm, obj)
 
 	F2.action.value = 'changebssid';
 	F2.sidx.value = obj.id.split('_')[1];
-	if(F2.sidx.value == '0'){
-		ShowObj_V2(parent.document.getElementById('extline'));
-	}else{
-		HideObj_V2(parent.document.getElementById('extline'));
-	}
-
 	F2.uiidx.value = obj.id.split('_')[2];
 	F2.wlmode.value = obj.id.split('_')[3];
+
 	F2.submit();
 }
 
@@ -1177,6 +1372,8 @@ function init_hiddensetup(wl_mode, mupdate, bupdate, eupdate, chanup)
 		return;
 	}
 	var F = document.hiddenwlsetup_fm;
+
+	update_extsetup_viewing(F);
 	if(mupdate)
 		update_multibssid_lines();
 	if(bupdate)
@@ -1186,15 +1383,24 @@ function init_hiddensetup(wl_mode, mupdate, bupdate, eupdate, chanup)
 	}
 }
 
-function init_multibssid(ifrsize)
+function init_resize_only(frame_name, ifrsize)
+{
+	var ifr = parent.document.getElementsByName(frame_name)[0];
+        if(!ifr)        return;
+        var idoc = ifr.document || ifr.contentWindow.document;
+        if(!idoc)       return;
+
+	resize_iframe_height(ifr, idoc, ifrsize);
+}
+
+function init_multibssid(ifrsize, bsidx)
 {
 	var F = document.multibssid_fm;
-	var Obj = document.getElementById('BSSID_0_0_1');
-	if(!Obj)	Obj = document.getElementById('BSSID_0_0_0');
 	var ifr = parent.document.getElementsByName('multibssid_iframe')[0];
 	if(!ifr)	return;
 	var idoc = ifr.document || ifr.contentWindow.document;
 	if(!idoc)	return;
+	var Obj = document.getElementById(bsidx);
 
 	if(!F || !Obj)	return;
 
@@ -1231,11 +1437,11 @@ function init_extendsetup(ifrsize)
 	resize_iframe_height(ifr, idoc, ifrsize);
 }
 
-function init_wpsstatus(time, firstload)
+function init_wlstatus(time, firstload)
 {
 	if(!iframe_ready(parent))
 	{
-		setTimeout(function() { init_wpsstatus(time, firstload); }, 10);
+		setTimeout(function() { init_wlstatus(time, firstload); }, 10);
 		return;
 	}
 	if(firstload)
@@ -1244,160 +1450,244 @@ function init_wpsstatus(time, firstload)
 		setTimeout(wps_processing_func, time);
 }
 
+function get_form_value_with_tag(F, name, wl_tag, is_integer)
+{
+	if(!F || !name || !wl_tag)		return null;
+	if(is_integer){
+		if(F[name+wl_tag])		return parseInt(F[name+wl_tag].value);
+		else				return 0;
+	}else{
+		if(F[name+wl_tag])		return F[name+wl_tag].value;
+		else				return null;
+	}
+}
+
+function calc_wps_status(pre_stat, calc_stat)
+{
+	if(!pre_stat && !calc_stat)	return null;
+	if(!pre_stat)			return calc_stat;
+	if(!calc_stat)			return pre_stat;
+
+	var cur_stat = pre_stat;
+
+	switch(calc_stat){
+		case 'WPS_STOP':case 'WPS_IDLE':case 'WPS_ERROR':case 'WPS_TIMEOUT':case 'WPS_START':case 'NONE':
+			if(cur_stat != 'WPS_CONFIGURED' && cur_stat != 'WPS_PROCESSING')    cur_stat = 'NONE';
+			break;
+		case 'WPS_CONFIGURED':
+			if(cur_stat != 'WPS_CONFIGURED' && cur_stat != 'WPS_PROCESSING')    cur_stat = 'WPS_CONFIGURED';
+			break;
+		case 'WPS_PROCESSING':
+			if(cur_stat != 'WPS_CONFIGURED' && cur_stat != 'WPS_PROCESSING')    cur_stat = 'WPS_PROCESSING';
+			break;
+	}
+
+	return cur_stat;
+}
+
+function update_status_line_ui(mdoc, wl_tag, act, txt)
+{
+	if(act){
+		var mobj = mdoc.getElementById('WLSTATUS_TEXT'+(wl_tag.toUpperCase()));
+		if(mobj)        mobj.innerHTML = txt;
+		ShowObj_V2(mdoc.getElementById('WLSTATUS_LINE'+(wl_tag.toUpperCase())));
+		if(is_band_steering_mode(parent, wl_tag, 'tag'))
+			HideObj_V2(mdoc.getElementById('BNDSTRG_TEXT_LINE'));
+	}else{
+		HideObj_V2(mdoc.getElementById('WLSTATUS_LINE'+(wl_tag.toUpperCase())));
+		if(is_band_steering_mode(parent, wl_tag, 'tag'))
+			ShowObj_V2(mdoc.getElementById('BNDSTRG_TEXT_LINE'));
+	}
+}
+
+function get_wps_activated(F, wl_tag)
+{
+	if(!F || !wl_tag)	return false;
+
+	var running = get_form_value_with_tag(F, 'run',     wl_tag, true);
+	var wpsmode = get_form_value_with_tag(F, 'wpsmode', wl_tag, true);
+
+	var activated = (running == 1 && wpsmode == 1);
+
+	return activated;
+}
+
+function get_dfs_activated(F, wl_tag)
+{
+	if(!F || !wl_tag)			return false;
+	
+	var val = get_form_value_with_tag(F, 'dfs_stat', wl_tag, false);
+	if(val && val != 'DFS_NORMAL')			return true;
+
+	return false;
+}
+
+function make_status_line_text(wps_act, wps_stat, dfs_act, dfs_stat, wps_remain, dfs_remain)
+{
+	var msg = '';
+
+	if(dfs_act){
+		switch(dfs_stat){
+			case 'DFS_SWITCHING':
+				msg = WIRELESSCONF_DFS_SWITCHING;	break;
+			case 'DFS_SILENCE':
+				msg = WIRELESSCONF_DFS_SILENCE + ' ' + dfs_remain + WIRELESSCONF_BASICSETUP_SECOND;	break;
+		}
+	}else{
+		if(wps_act){
+			if(wps_stat == 'WPS_PROCESSING')
+				msg = 'WPS ' + wps_remain + WIRELESSCONF_BASICSETUP_SECOND;
+		}
+	}
+
+	return msg;
+}
+
+function update_wps_button_ui(pdoc, pf, wl_tag, stat, activated)
+{
+	if(!pdoc || !pf || !wl_tag)	return;
+
+	var msg = '';
+
+	if(activated){
+		EnableObj_V2(pdoc.getElementById('wpsconn'+wl_tag));
+		switch(stat){
+			case 'WPS_STOP':case 'WPS_IDLE':case 'WPS_ERROR':case 'WPS_TIMEOUT':case 'WPS_START':case 'NONE':
+				pf['act'+wl_tag+'btn'].value = 'start';
+				msg = wl_tag_to_full_ghz_text(wl_tag) + ' ' + WIRELESSCONF_BASICSETUP_WPSCONNBTN;
+				pdoc.getElementById('wpsconn'+wl_tag).innerHTML = msg;
+				break;
+			case 'WPS_CONFIGURED':
+				pf['act'+wl_tag+'btn'].value = 'start';
+				msg = wl_tag_to_full_ghz_text(wl_tag) + ' ' + WIRELESSCONF_BASICSETUP_WPSCONNBTN;
+				pdoc.getElementById('wpsconn'+wl_tag).innerHTML = msg;
+				break;
+			case 'WPS_PROCESSING':
+				pf['act'+wl_tag+'btn'].value = 'stop';
+				msg = wl_tag_to_full_ghz_text(wl_tag) + ' ' + WIRELESSCONF_BASICSETUP_WPSDISSBTN;
+				pdoc.getElementById('wpsconn'+wl_tag).innerHTML = msg;
+				break;
+			default:                break;
+		}
+	}else{
+		pf['act'+wl_tag+'btn'].value = '';
+		msg = wl_tag_to_full_ghz_text(wl_tag) + ' ' + WIRELESSCONF_BASICSETUP_WPSCONNBTN;
+		pdoc.getElementById('wpsconn'+wl_tag).innerHTML = msg;
+		DisableObj_V2(pdoc.getElementById('wpsconn'+wl_tag));
+	}
+}
+
+function wps_band_steering_mode_view(pdoc, idoc, val)
+{
+	if(!pdoc || !idoc)		return;
+	if(!pdoc.band_steering_info)	return;
+
+	if(val && val == '1'){
+		ShowObj_V2(idoc.getElementById('WPSTD_'+(pdoc.band_steering_info.tag)));
+		for(i = 0; i < pdoc.support_wl_tags.length; i++){
+			HideObj_V2(idoc.getElementById('WPSTD_'+(pdoc.support_wl_tags[i].tag)));
+		}
+	}else{
+		HideObj_V2(idoc.getElementById('WPSTD_'+(pdoc.band_steering_info.tag)));
+		for(i = 0; i < pdoc.support_wl_tags.length; i++){
+			ShowObj_V2(idoc.getElementById('WPSTD_'+(pdoc.support_wl_tags[i].tag)));
+		}
+	}
+}
+
 function wps_processing_func()
 {
 	var pdoc = document;
 	var pf = document.wps_fm || document.getElementsByName('wps_fm')[0];
 	if(!pf){return;}
-	var ifr = document.wpsstatus_iframe || document.getElementsByName('wpsstatus_iframe')[0];
+	var ifr = document.wlstatus_iframe || document.getElementsByName('wlstatus_iframe')[0];
 	if(!ifr)	return;
 	var idoc = ifr.document || ifr.contentWindow.document;
 	if(!idoc)	return;
-	var F = idoc.wpsstatus_fm || idoc.getElementsByName('wpsstatus_fm')[0];
+	var F = idoc.wlstatus_fm || idoc.getElementsByName('wlstatus_fm')[0];
 	if(!F){return;}
 	var mfr = parent.document.multibssid_iframe || parent.document.getElementsByName('multibssid_iframe')[0];
 	if(!mfr)	return;
 	var mdoc = mfr.document || mfr.contentWindow.document;
 	if(!mdoc)	return;
 
-	var rtime2g = parseInt(F.remaintime2g.value);
-	if(F.remaintime5g)	var rtime5g = parseInt(F.remaintime5g.value);
+	var i = 0;
+	var rtime = [];
+	var stats = [];
 
-	var stat2g = F.statusval2g.value;
-	if(F.statusval5g)	var stat5g = F.statusval5g.value;
+	var stat = null;
 
-	if(F.statusval5g){
-		var stat = F.statusval2g.value;
-		switch(stat5g){
-			case 'WPS_STOP':case 'WPS_IDLE':case 'WPS_ERROR':case 'WPS_TIMEOUT':case 'WPS_START':case 'NONE':
-				if(stat2g != 'WPS_CONFIGURED' && stat2g != 'WPS_PROCESSING')	stat = 'NONE';
-				break;
-			case 'WPS_CONFIGURED':
-				if(stat2g != 'WPS_CONFIGURED' && stat2g != 'WPS_PROCESSING')	stat = 'WPS_CONFIGURED';
-				break;
-			case 'WPS_PROCESSING':
-				if(stat2g != 'WPS_CONFIGURED' && stat2g != 'WPS_PROCESSING')	stat = 'WPS_PROCESSING';
-				break;
-		}
-	}else{
-		var stat = F.statusval2g.value;
+	if(!parent.support_wl_tags || !parent.support_wl_tags.length){return;}
+
+	if(F.bandsteering_enable){
+		wps_band_steering_mode_view(parent, pdoc, F.bandsteering_enable.value);
 	}
-	
-	var activated2g = (F.run2g.value == '1' && F.wpsmode2g.value == '1');
-	if(F.run5g && F.wpsmode5g)	var activated5g = (F.run5g.value == '1' && F.wpsmode5g.value == '1');
-	else				var activated5g = false;
 
-	var activated = (activated2g || activated5g);
-	var msg = '';
+	if(F.bandsteering_enable && F.bandsteering_enable.value == '1'){
+		rtime[0] = get_form_value_with_tag(F, 'remaintime', parent.band_steering_info.tag, true);
+		stats[0] = get_form_value_with_tag(F, 'statusval', parent.band_steering_info.tag, false);
+		
+		stat = calc_wps_status(stat, stats[0]);
+		if(pf.submitted.value != ''){F.submit();	return;}
 
-	if(pf.submitted.value != ''){F.submit();	return;}
-	if(F.run2g && F.wpsmode2g){
-		if(activated2g){	
-			EnableObj_V2(pdoc.getElementById('wpsconn2g'));
-			switch(stat2g){
-				case 'WPS_STOP':case 'WPS_IDLE':case 'WPS_ERROR':case 'WPS_TIMEOUT':case 'WPS_START':case 'NONE':
-					pf.act2gbtn.value = 'start';
-					msg = '2.4 GHz ' + WIRELESSCONF_BASICSETUP_WPSCONNBTN;
-					pdoc.getElementById('wpsconn2g').innerHTML = msg;
-					HideObj_V2(mdoc.getElementById('WPSSTATUS_LINE2G'));
-					break;
-				case 'WPS_CONFIGURED':
-					pf.act2gbtn.value = 'start';
-					msg = '2.4 GHz ' + WIRELESSCONF_BASICSETUP_WPSCONNBTN;
-					pdoc.getElementById('wpsconn2g').innerHTML = msg;
-					HideObj_V2(mdoc.getElementById('WPSSTATUS_LINE2G'));
-					break;
-				case 'WPS_PROCESSING':
-					pf.act2gbtn.value = 'stop';
-					msg = '2.4 GHz ' + WIRELESSCONF_BASICSETUP_WPSDISSBTN;
-					pdoc.getElementById('wpsconn2g').innerHTML = msg;
-					msg = 'WPS ' + rtime2g + WIRELESSCONF_BASICSETUP_SECOND;
-					var mobj = mdoc.getElementById('WPSSTATUS_TEXT2G');
-					if(mobj)	mobj.innerHTML = msg;
-					mobj = null;
-					ShowObj_V2(mdoc.getElementById('WPSSTATUS_LINE2G'));
-					break;
-				default:		break;
-			}
-		}else{
-			pf.act2gbtn.value = '';
-			msg = '2.4 GHz ' + WIRELESSCONF_BASICSETUP_WPSCONNBTN;
-			pdoc.getElementById('wpsconn2g').innerHTML = msg;
-			DisableObj_V2(pdoc.getElementById('wpsconn2g'));
-			HideObj_V2(mdoc.getElementById('WPSSTATUS_LINE2G'));
+		var wps_activated = get_wps_activated(F, parent.band_steering_info.tag);
+		var dfs_activated = get_dfs_activated(F, parent.band_steering_info.tag);
+		var dfs_stat = get_form_value_with_tag(F, 'dfs_stat', parent.band_steering_info.tag, false);
+		var dfs_remain = get_form_value_with_tag(F, 'dfs_remain', parent.band_steering_info.tag, false);
+
+		update_wps_button_ui(pdoc, pf, parent.band_steering_info.tag, stats[0], (!dfs_activated && wps_activated));
+		update_status_line_ui(mdoc, parent.band_steering_info.tag, (dfs_activated || (wps_activated && stats[0] == 'WPS_PROCESSING'))
+			,make_status_line_text(wps_activated, stats[0], dfs_activated, dfs_stat, rtime[0], dfs_remain) );
+	}
+	else{
+		for(i = 0; i < parent.support_wl_tags.length; i++){
+			rtime[i] = get_form_value_with_tag(F, 'remaintime', parent.support_wl_tags[i].tag, true);
+		}
+
+		for(i = 0; i < parent.support_wl_tags.length; i++){
+			stats[i] = get_form_value_with_tag(F, 'statusval', parent.support_wl_tags[i].tag, false);
+		}
+
+		for(i = 0; i < parent.support_wl_tags.length; i++){
+			stat = calc_wps_status(stat, stats[i]);
+		}
+
+		if(pf.submitted.value != ''){F.submit();	return;}
+
+		for(i = 0; i < parent.support_wl_tags.length; i++){
+			var wps_activated = get_wps_activated(F, parent.support_wl_tags[i].tag);
+			var dfs_activated = get_dfs_activated(F, parent.support_wl_tags[i].tag);
+			var dfs_stat = get_form_value_with_tag(F, 'dfs_stat', parent.support_wl_tags[i].tag, false);
+			var dfs_remain = get_form_value_with_tag(F, 'dfs_remain', parent.support_wl_tags[i].tag, false);
+
+			update_wps_button_ui(pdoc, pf, parent.support_wl_tags[i].tag, stats[i], (!dfs_activated && wps_activated));
+			update_status_line_ui(mdoc, parent.support_wl_tags[i].tag, (dfs_activated || (wps_activated && stats[i] == 'WPS_PROCESSING'))
+				,make_status_line_text(wps_activated, stats[i], dfs_activated, dfs_stat, rtime[i], dfs_remain) );
 		}
 	}
 
-	if(F.run5g && F.wpsmode5g){
-		if(activated5g){	
-			EnableObj_V2(pdoc.getElementById('wpsconn5g'));
-			switch(stat5g){
-				case 'WPS_STOP':case 'WPS_IDLE':case 'WPS_ERROR':case 'WPS_TIMEOUT':case 'WPS_START':case 'NONE':
-					pf.act5gbtn.value = 'start';
-					msg = '5 GHz ' + WIRELESSCONF_BASICSETUP_WPSCONNBTN;
-					pdoc.getElementById('wpsconn5g').innerHTML = msg;
-					HideObj_V2(mdoc.getElementById('WPSSTATUS_LINE5G'));
-					break;
-				case 'WPS_CONFIGURED':
-					pf.act5gbtn.value = 'start';
-					msg = '5 GHz ' + WIRELESSCONF_BASICSETUP_WPSCONNBTN;
-					pdoc.getElementById('wpsconn5g').innerHTML = msg;
-					HideObj_V2(mdoc.getElementById('WPSSTATUS_LINE5G'));
-					break;
-				case 'WPS_PROCESSING':
-					pf.act5gbtn.value = 'stop';
-					msg = '5 GHz ' + WIRELESSCONF_BASICSETUP_WPSDISSBTN;
-					pdoc.getElementById('wpsconn5g').innerHTML = msg;
-					msg = 'WPS ' + rtime5g + WIRELESSCONF_BASICSETUP_SECOND;
-					var mobj = mdoc.getElementById('WPSSTATUS_TEXT5G');
-					if(mobj)	mobj.innerHTML = msg;
-					mobj = null;
-					ShowObj_V2(mdoc.getElementById('WPSSTATUS_LINE5G'));
-					break;
-				default:		break;
-			}
-		}else{
-			pf.act5gbtn.value = '';
-			msg = '5 GHz ' + WIRELESSCONF_BASICSETUP_WPSCONNBTN;
-			pdoc.getElementById('wpsconn5g').innerHTML = msg;
-			DisableObj_V2(pdoc.getElementById('wpsconn5g'));
-			HideObj_V2(mdoc.getElementById('WPSSTATUS_LINE5G'));
-		}
-	}
-
-	if(activated){
-		switch(stat){
-			case 'WPS_STOP':case 'WPS_IDLE':case 'WPS_ERROR':case 'WPS_TIMEOUT':case 'WPS_START':case 'NONE':
-				pdoc.getElementById('wpsstatus').innerHTML = '';
-				break;
-			case 'WPS_CONFIGURED':
-				pdoc.getElementById('wpsstatus').innerHTML = WIRELESSCONF_WPSSETUP_CONFIGURED;
-				break;
-			case 'WPS_PROCESSING':
-				pdoc.getElementById('wpsstatus').innerHTML = WIRELESSCONF_WPSSETUP_PROCESSING;
-				break;
-			default:
-				pdoc.getElementById('wpsstatus').innerHTML = '';
-				break;
-		}
+	switch(stat){
+		case 'WPS_STOP':case 'WPS_IDLE':case 'WPS_ERROR':case 'WPS_TIMEOUT':case 'WPS_START':case 'NONE':
+			pdoc.getElementById('wpsstatus').innerHTML = '';
+			break;
+		case 'WPS_CONFIGURED':
+			pdoc.getElementById('wpsstatus').innerHTML = WIRELESSCONF_WPSSETUP_CONFIGURED;
+			break;
+		case 'WPS_PROCESSING':
+			pdoc.getElementById('wpsstatus').innerHTML = WIRELESSCONF_WPSSETUP_PROCESSING;
+			break;
+		default:
+			pdoc.getElementById('wpsstatus').innerHTML = '';
+			break;
 	}
 
 	F.submit();
-	try{
-		rtime5g = null;	stat5g = null; activated5g = null;	
-	}finally
-	{
-		pdoc = null;	pf = null;	ifr = null; idoc = null;	F = null; mfr = null; mdoc = null;
-		rtime2g = null;	stat2g = null;	stat = null;	activated2g = null;	activated = null;	msg = null;
-	}
 }
 
-function init_wpssetup()
+function wpsbtn_init(wl_tag)
 {
-	var btn2g = document.getElementById('wpsconn2g');
-	if(btn2g)	btn2g.innerHTML = '2.4 GHz ' + WIRELESSCONF_BASICSETUP_WPSCONNBTN;
-	var btn5g = document.getElementById('wpsconn5g');
-	if(btn5g)	btn5g.innerHTML = '5 GHz ' + WIRELESSCONF_BASICSETUP_WPSCONNBTN;
+	var btn = document.getElementById('wpsconn'+wl_tag);
+	if(btn)   btn.innerHTML = wl_tag_to_full_ghz_text(wl_tag) + ' ' + WIRELESSCONF_BASICSETUP_WPSCONNBTN;
 }
 
 function init_mainsetup_form()
@@ -1416,7 +1706,7 @@ function init_mainsetup_form()
 function iframe_ready(mainFrame)
 {
 	if( mainFrame.iframe_searchwireless && mainFrame.iframe_multibssid && mainFrame.iframe_hiddenwlsetup && mainFrame.iframe_wpssubmit 
-	&& mainFrame.iframe_wpsstatus && mainFrame.iframe_wpssetup && mainFrame.iframe_basicsetup && mainFrame.iframe_extendsetup)
+	&& mainFrame.iframe_wlstatus && mainFrame.iframe_wladdon && mainFrame.iframe_basicsetup && mainFrame.iframe_extendsetup)
 		return true;
 	return false;
 }

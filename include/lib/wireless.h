@@ -136,6 +136,10 @@
 #endif
 #define DEFAULT_WIRELESS_CONF_FILE      "/var/run/wireless.conf.default"
 #define DEFAULT_WIRELESS_CONF_FILE_5G      "/var/run/wireless.conf.5g.default"
+#define DEFAULT_WIRELESS_CONF_FILE_5G2      "/var/run/wireless.conf.5g2.default"
+#if defined(USE_5G_WL) && defined(USE_BAND_STEERING)
+#define DEFAULT_WIRELESS_CONF_FILE_BAND_STEERING      "/var/run/wireless.conf.band.default"
+#endif
 
 
 #define WPS_STOPPED	0x0
@@ -479,8 +483,13 @@ typedef struct {
 #endif
 
 	int wl_mode;
-#define WL_MODE_24G 	0
-#define WL_MODE_5G 	1
+#define WL_MODE_24G 		0
+#define WL_MODE_5G 		1
+#define WL_MODE_5G2 		2
+#ifdef USE_BAND_STEERING
+#define WL_MODE_BAND_STEERING	999
+#endif
+#define WL_MODE_END 		-1
 
 /* wl_idx : 32 bit,    
 wl_mode:upper 16bit : Index for 2.4 or 5G, 
@@ -543,6 +552,9 @@ wl_bss_idx:lower 16bit : Index for multiple bss
 #endif
 #if defined(USE_QCA_MUMIMO_UI) || defined(USE_RTL_MUMIMO_UI)
 	int mu_flag;
+#endif
+#if defined(USE_5G_WL) && defined(USE_BAND_STEERING)
+	int band_steering;	
 #endif
 
 	int num_of_streams;
@@ -613,13 +625,22 @@ typedef struct auth_maclist_s {
 } auth_maclist_t;
 
 
+#ifdef USE_CHANNEL_MIB
+typedef struct {
+#define MAX_COUNTRY_STR_NAME 128
+       char name[MAX_COUNTRY_STR_NAME];
+#define MAX_COUNTRY_CODE 4
+       char code[MAX_COUNTRY_CODE];
+} country_name_t;
 
+#else
 typedef struct {
        char *name;     /* Long name */
        char *code;   /* Abbreviation */
        int region_24G;
        int region_5G;
 } country_name_t;
+#endif
 
 
 
@@ -1037,7 +1058,9 @@ int wireless_api_get_advanced_params_flag(void);
 #ifdef USE_WIRELESSCONF_V2
 
 #define WIRELESS_CONF_V2_PREFIX      "/etc/wirelessconf"
-#define GET_WL_MODE_STR_BY_IDX(idx)    (((((idx)>>16)&0xffff)==WL_MODE_24G)?"2g":"5g")
+
+//#define GET_WL_MODE_STR_BY_IDX(idx)    (((((idx)>>16)&0xffff)==WL_MODE_24G)?"2g":"5g")
+
 #define GET_WL_MODE_BY_IDX(idx)    (((idx)>>16)&0xffff)
 #define GET_WL_IDX(wl_mode,idx)   ((((wl_mode)<<16)&0xffff0000)+(idx))
 #define WIRELESS_WPS_CONF_FILE_PREFIX      "/etc/wireless.conf"
@@ -1050,6 +1073,7 @@ int wireless_api_run_mbss(int wl_idx,int flag, int commit);
 int wireless_api_add_mbss(int wl_idx, wireless_conf_t *wl_conf, int commit);
 int wireless_api_del_mbss(int wl_idx, int commit);
 #else
+#define GET_WL_IDX(wl_mode,idx)   ((((wl_mode)<<16)&0xffff0000)+(idx))
 int read_mbssid_conf(wireless_conf_t *wl_conf, int wl_mode, char *ssid);
 int wireless_api_run_mbss(char *run_ssid, int wl_mode,int flag, int commit);
 void write_mbssid_conf(wireless_conf_t *wl_conf);
@@ -1189,8 +1213,21 @@ int qca_wireless_set_led(char *ifname,int flag);
 
 #ifdef USE_5G_WL
 
+#define GET_WL_IF(wl_mode) (get_wl_ifname_by_wlmode(wl_mode))
+#define GET_WL_MODE(ifname) (get_wl_mode_by_ifname(ifname))
 #define CHECK_5G_IF(x) ((!strcmp(x,IF_WIRELESS_5G))?1:0)
-#define GET_WL_IF(wl_mode) ((wl_mode==WL_MODE_5G)?IF_WIRELESS_5G:IF_WIRELESS)
+#ifdef USE_BAND_STEERING
+#define CHECK_BANDSTEERING_IF(x) ((!strcmp(x,IF_WIRELESS_BAND_STEERING))?1:0)
+#endif
+#ifdef USE_5G2_WL
+#define CHECK_5G2_IF(x) ((!strcmp(x,IF_WIRELESS_5G2))?1:0)
+#define IS_5G(x) (CHECK_5G_IF(x) || CHECK_5G2_IF(x))
+#define IS_5G_MODE(x) ((x==WL_MODE_5G)||(x==WL_MODE_5G2))
+#else
+#define IS_5G(x) (CHECK_5G_IF(x))
+#define IS_5G_MODE(x) (x==WL_MODE_5G)
+#endif
+
 
 #ifndef USE_WIRELESSCONF_V2
 #define MK_MBSS_FILENAME(x,wl_mode,ssid) sprintf(x,"%s.%d.%s", WIRELESS_CONF_FILE, wl_mode,ssid )
@@ -1216,6 +1253,7 @@ int CHECK_5G_IF_DYN_CONCURRENT(char *ifname);
 #else
 
 #define CHECK_5G_IF(x) 0
+#define IS_5G(x) (CHECK_5G_IF(x))
 
 #ifndef USE_WIRELESSCONF_V2
 #define MK_MBSS_FILENAME(x,wl_mode,ssid) sprintf(x,"%s.%s", WIRELESS_CONF_FILE, ssid )
@@ -1234,10 +1272,10 @@ int CHECK_5G_IF_DYN_CONCURRENT(char *ifname);
 
 #define GET_WWAN_IF(x) IF_WWAN
 
+#define GET_WL_MODE(ifname) (CHECK_5G_IF(ifname)?WL_MODE_5G:WL_MODE_24G)
 #endif
 
-#define GET_WL_MODE(ifname) (CHECK_5G_IF(ifname)?WL_MODE_5G:WL_MODE_24G)
-#define GET_WL_MODESTR(ifname) (CHECK_5G_IF(ifname)?"5GHz":"2.4GHz")
+#define GET_WL_MODESTR(ifname) (IS_5G(ifname)?"5GHz":"2.4GHz")
 
 
 
@@ -1294,6 +1332,9 @@ int wireless_init_radius_chain(void);
 int wireless_set_radius_iptables(char *ifname, wireless_conf_t *mbss_conf, int mbssnum);
 
 int wireless_restart_8021xd(void);
+#ifdef USE_BAND_STEERING
+int wireless_restart_bandstrg(void);
+#endif
 
 char * get_racfg_filename(int wl_mode);
 
@@ -1339,6 +1380,63 @@ int wireless_api_restart(char *ifname);
 int check_wireless_ifstatus(int wl_mode);
 int check_wireless_ifrun(int wl_mode);
 
+int wireless_api_get_prev_channel(char *ifname,wl_channel_t *channel);
+int wireless_api_set_prev_channel(char *ifname,wl_channel_t *channel);
 
+/* WIRELESSCONF BASICSETUP CGI RENEWAL FUNCTIONS */
+char *get_wl_tag_by_wlmode(int wl_mode);
+char *get_wl_postfix_by_wlmode(int wl_mode);
+void wps_stop_signal_to_another_wireless(int wl_mode);
+int get_num_of_streams_for_wlmode(int wl_mode);
+int get_num_of_streams_bigger();
+int get_wl_mode_by_wl_tag(char *tag);
+void wps_stop_with_status(int wl_mode);
+void wps_stop_each_all();
 
+typedef struct advance_value_set{
+#define MAX_ADVANCE_TEXT_SIZE 128
+	int value;
+	char text[MAX_ADVANCE_TEXT_SIZE];
+}advance_value_t;
+typedef struct advance_select_set{
+#define MAX_ADVANCE_SET_COUNT 30
+	int count;
+	advance_value_t value_set[MAX_ADVANCE_SET_COUNT];
+}advance_select_t;
+
+char *get_wl_postfix(char *ifname);
+char *get_wl_config_filename(int wl_idx);
+int get_wl_mode_by_ifname(char *ifname);
+char *get_wl_ifname_by_wlmode(int wl_mode);
+
+void fill_advancesetup_mode(int wl_mode, advance_select_t *s);
+void fill_advancesetup_channel_width(int wl_mode, advance_select_t *s);
+#if defined(USE_MTK_TXBF_MUMIMO_UI) || defined(USE_QCA_MUMIMO_UI) || defined(USE_RTL_MUMIMO_UI)
+void fill_advancesetup_mumimo(int wl_mode, advance_select_t *s);
 #endif
+void fill_advancesetup_mimo_streams(int wl_mode, advance_select_t *s);
+/* END */
+/* BAND STEERING FUNCTIONS*/
+int get_band_steering_running(int sidx);
+int get_band_steering_applied(int wl_mode);
+void update_wl_conf_from_band_steering(wireless_conf_t *wl_conf, int ssid_idx);
+int wireless_apply_macauth_all();
+
+
+#ifdef USE_DFS
+typedef struct dfs_info_s {
+	int status;
+#define DFS_NORMAL_STATUS  0x0
+#define DFS_SWITCHING_STATUS 0x1
+#define DFS_SILENCE_STATUS 0x2
+	int cac_time;
+	int cac_time_remain;
+} dfs_info_t;	
+int check_dfs_channel(char *country,int channel);
+int wireless_get_dfs_info(char *ifname, dfs_info_t *di);
+#endif
+
+/* END */
+#endif
+
+

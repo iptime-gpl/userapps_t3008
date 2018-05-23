@@ -391,4 +391,16 @@ function addEvent()
 	}
 }
 
+function set_band_steering_title()
+{
+	var select = parent.frames[3].document.getElementById('wirelessmode');
+	if(select){
+		select.style.display = 'none';
+	}
+	var bndstrg = parent.frames[3].document.getElementById('wireless_bndstrg_text');
+	if(bndstrg){
+		bndstrg.style.display = 'inline-block';
+	}
+}
+
 </script>

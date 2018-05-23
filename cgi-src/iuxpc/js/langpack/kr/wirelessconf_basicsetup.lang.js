@@ -40,4 +40,8 @@ var WIRELESSCONF_EXTENDSETUP_DYN_BLANKED = '동적채널변경 시간 값을 입
 var WIRELESSCONF_EXTENDSETUP_DYN_INVALID = '동적채널변경 시간 값은 1~100 사이로 입력하여 주십시오.';
 
 var WIRELESSCONF_DISCONN_ALERT = '현재 무선으로 설정 페이지에 접속되어 있습니다.\n설정 변경 시, 무선 연결이 끊어질 수 있습니다.\n계속 진행하시겠습니까?';
+var WIRELESSCONF_BASICSETUP_DFS_WARNING = '52 - 144 채널은 대한민국 전파법상 DFS채널입니다.\nDFS채널사용 시, 60초간의 활성화 시간이 필요하며,\nRadar간섭 검출 시, 자동으로 채널이 변경될 수 있습니다.';
+
+var WIRELESSCONF_DFS_SWITCHING = '채널 이동 중';
+var WIRELESSCONF_DFS_SILENCE = '활성화 중';
 </script>
